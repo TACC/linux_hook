@@ -93,7 +93,7 @@ Save the code as 1.c. <br>
 
 Now test it. 
 
-`LD_PRELOAD=./hook_open.so touch aaa bbb ccc` <br>
+`LD_PRELOAD=./1.so touch aaa bbb ccc` <br>
 
 You should see,
 
