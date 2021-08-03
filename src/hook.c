@@ -138,7 +138,7 @@ static void determine_lib_path(void)
 	FILE *fp;
 	
 	pid = getpid();
-	sprintf(path_file_map, "/proc/%d/maps", pid);
+	snprintf(path_file_map, sizeof(path_file_map), "/proc/%d/maps", pid);
 	fp = fopen(path_file_map, "rb");
 	assert(fp != NULL);
 	
@@ -378,7 +378,7 @@ static void get_module_maps(void)
 	
 	//	printf("DBG> num_called_ModuleMap = %d\n", num_called_ModuleMap);
 	
-	sprintf(szName, "/proc/%d/maps", getpid());
+	snprintf(szName, sizeof(szName), "/proc/%d/maps", getpid());
 	fIn = fopen(szName, "rb");	// non-seekable file. fread is needed!!!
 	if(fIn == NULL)	{
 		printf("Fail to open file: %s\nQuit\n", szName);
