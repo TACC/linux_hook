@@ -1,5 +1,5 @@
 # linux_hook
-linux_hook is a mini framework to hook functions in shared libraries under Linux.
+linux_hook is a mini framework to hook the functions in shared libraries under Linux.
 It only works on x86_64 at this time. I might extend it to support Power PC and
 ARM in future. 
 <br>
