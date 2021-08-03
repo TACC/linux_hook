@@ -30,7 +30,7 @@ based on trampoline is more reliable.
 
 <br>
 
-Example of a mini code to use hook_linux to intercept open() in libc.so. 
+Example of a mini code to use hook_linux to intercept the open() in libc.so. 
 
 ``` C
 #include <stdio.h>
