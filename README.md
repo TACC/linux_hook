@@ -1,7 +1,9 @@
 # linux_hook
 linux_hook is a mini framework to hook functions in shared libraries under Linux.
-It only works on x86_64 at this time. I might extend it to support Power PC and <br>
-ARM in future. [udis86](https://github.com/vmt/udis86) was adopted to disasseble binary code on x86_64. 
+It only works on x86_64 at this time. I might extend it to support Power PC and
+ARM in future. 
+<br>
+[udis86](https://github.com/vmt/udis86) was adopted to disasseble binary code on x86_64. 
 
 Get started,<br> 
 `git clone https://github.com/TACC/linux_hook` <br>
