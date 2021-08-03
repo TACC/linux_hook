@@ -28,4 +28,76 @@ One more test to monitor open() in run a simple hello world in python.
 You should see file 1 and 2 have different number of lines. We can see the hook 
 based on trampoline is more reliable. 
 
+<br>
+
+Example of a mini code to use hook_linux to intercept open() in libc.so. 
+
+``` C
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdarg.h>
+#include <unistd.h>
+
+#include "include/hook.h"
+
+typedef int (*org_open_libc)(const char *pathname, int oflags, ...);
+org_open_libc real_open_libc=NULL;
+
+// New open() that intercept the open() in libc.so
+int new_open_libc(const char *pathname, int oflags, ...)
+{
+        int mode = 0, two_args=1, ret;
+        char msg[512];
+
+        if (oflags & O_CREAT)   {
+                va_list arg;
+                va_start (arg, oflags);
+                mode = va_arg (arg, int);
+                va_end (arg);
+                two_args=0;
+        }
+
+        snprintf(msg, sizeof(msg), "DBG> new_open_libc(%s)\n", pathname);
+        write(STDOUT_FILENO, msg, strlen(msg));
+
+        if(two_args)    {
+                ret = real_open_libc(pathname, oflags);
+        }
+        else    {
+                ret = real_open_libc(pathname, oflags, mode);
+        }
+        return ret;
+}
+
+static __attribute__((constructor)) void init_myhook()
+{
+        register_a_hook("libc", "open64", (void*)new_open_libc, (long int *)(&real_open_libc));
+
+        install_hook();
+}
+
+static __attribute__((destructor)) void finalize_myhook()
+{
+        uninstall_hook();
+}
+```
+
+<br>
+Save the code as 1.c. <br>
+`gcc -fPIC -c 1.c` <br>
+`gcc -fPIC -shared -o 1.so 1.o obj/hook.o obj/decode.o obj/itab.o obj/syn-att.o obj/syn-intel.o obj/syn.o obj/udis86.o`<br>
+
+Now test it. 
+
+`LD_PRELOAD=./hook_open.so touch aaa bbb ccc` <br>
+
+You should see,
+
+`DBG> new_open(aaa)` <br>
+`DBG> new_open(bbb)` <br>
+`DBG> new_open(ccc)` <br>
+
 
