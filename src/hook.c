@@ -611,7 +611,7 @@ void install_hook(void)
 	int j, idx_mod, iFunc, iFunc2, jMax, ReadItem, *p_int, WithJmp[MAX_PATCH];
 	int nInstruction, RIP_Offset, Jmp_Offset, nFunc_InBlk;
 	int OffsetList[MAX_INSTUMENTS];
-	char szHexCode[MAX_INSTUMENTS][32], szInstruction[MAX_INSTUMENTS][64];
+	char szHexCode[MAX_INSTUMENTS][64], szInstruction[MAX_INSTUMENTS][128];
 	char *pSubStr=NULL, *pOpOrgEntry;
 	void *pbaseOrg;
 	size_t MemSize_Modify;
