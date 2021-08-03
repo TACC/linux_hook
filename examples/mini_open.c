@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 
 #define __USE_GNU
