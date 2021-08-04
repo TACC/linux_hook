@@ -1,17 +1,16 @@
 # linux_hook
 linux_hook is a mini framework to hook / intercept the functions in shared libraries 
-under Linux.It only works on x86_64 at this time. I might extend it to support Power 
+under Linux. It only works on x86_64 at this time. I might extend it to support Power 
 PC and ARM in future. 
 <br>
 [udis86](https://github.com/vmt/udis86) was adopted to disasseble binary code on x86_64. 
-
 <br>
 Trampoline technique is adopted in the implementation of linux_hook, so the smallest 
 size functions we can hook needs 5 bytes. A jmp (+/-2GB) instruction with 5 bytes will 
 be placed at the entry of the function we intend to hook. Memory blocks close to the 
 shared libraries are allocated dynamically to provide the space for setting up trampoline (
 the code to jump to new function and the code to call old function). 
-
+<br>
 Get started,<br> 
 `git clone https://github.com/TACC/linux_hook` <br>
 `cd linux_hook` <br>
@@ -37,7 +36,6 @@ You should observe file 1 and 2 have different number of lines. We can see the
 hook based on trampoline is more reliable. 
 
 <br>
-
 Example of a mini code to use hook_linux to intercept the open() in libc.so. 
 
 ``` C
@@ -94,7 +92,6 @@ static __attribute__((destructor)) void finalize_myhook()
 ```
 
 <br>
-
 Save the code as 1.c. <br>
 `gcc -fPIC -c 1.c` <br>
 `gcc -fPIC -shared -o 1.so 1.o obj/hook.o obj/decode.o obj/itab.o obj/syn-att.o obj/syn-intel.o obj/syn.o obj/udis86.o` <br>
