@@ -46,17 +46,18 @@
 #define MAX_TRAMPOLINE_LEN	((MAX_INSN_LEN) + (JMP_INSTRCTION_LEN))
 
 typedef struct	{
-	char szModuleName[MAX_LEN_PATH_NAME];
-	unsigned long int Module_base_addr;
-	char szOrgFuncName[MAX_PATCH][MAX_LEN_FUNC_NAME];
-	int PatchDisabled[MAX_PATCH];
-	void* OrgFunc[MAX_PATCH];
-	void *OrgFuncMin, *OrgFuncMax;
-	long int *PtrCallOrg[MAX_PATCH];
-	long int Func_Len[MAX_PATCH];
-	void* NewFunc[MAX_PATCH];
-	int nFunc;
-	int IdxPatchBlk;	// which patch memory block
+	char module_name[MAX_LEN_PATH_NAME];
+	unsigned long int module_base_addr;
+	char func_name_list[MAX_PATCH][MAX_LEN_FUNC_NAME];
+	int is_patch_disabled[MAX_PATCH];
+	void* old_func_addr_list[MAX_PATCH];
+	void *old_func_addr_min, *old_func_addr_max;
+	long int *ptr_old_func_add_list[MAX_PATCH];
+	long int old_func_len_list[MAX_PATCH];
+	void* new_func_addr_list[MAX_PATCH];
+	int num_hook;
+	// which patch memory block
+	int idx_patch_blk;
 }MODULE_PATCH_INFO, *PMODULE_PATCH_INFO;
 
 typedef struct {
@@ -69,9 +70,9 @@ typedef struct {
 	// the address of orginal function
 	void *addr_org_func;
 	// the number of bytes copied of the entry instructions of the original function. Needed to remove hook. 
-	int nBytesCopied;
+	int saved_code_len;
 	// the offset of rip addressed variable. Relative address has to be corrected when copied into trampoline from original address
-	int  Offset_RIP_Var;
+	int  offset_rIP_var;
 }TRAMPOLINE, *PTRAMPOLINE;
 
 typedef struct	{

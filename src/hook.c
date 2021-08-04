@@ -354,7 +354,7 @@ static int query_registered_module(const char *lib_name_str)
 	int i;
 	
 	for(i=0; i<num_module; i++)	{
-		if(strcmp(lib_name_str, module_list[i].szModuleName)==0)	{
+		if(strcmp(lib_name_str, module_list[i].module_name)==0)	{
 			return i;
 		}
 	}
@@ -475,8 +475,8 @@ static int find_usable_block(int idx_mod)
 	int i;
 	long int p_Min, p_Max, p_MemBlk;
 	
-	p_Min = (long int)(module_list[idx_mod].OrgFuncMin);
-	p_Max = (long int)(module_list[idx_mod].OrgFuncMax);
+	p_Min = (long int)(module_list[idx_mod].old_func_addr_min);
+	p_Max = (long int)(module_list[idx_mod].old_func_addr_max);
 	
 	for(i=0; i<num_patch_blk; i++)	{
 		//		printf("(0x%llx, 0x%llx)\n", patch_blk_list[i].patch_addr, patch_blk_list[i].patch_addr_end);
@@ -502,15 +502,15 @@ static void allocate_memory_block_for_patches(void)
 	num_patch_blk = 0;
 	
 	for(idx_mod=0; idx_mod<num_module; idx_mod++)	{
-		if( (module_list[idx_mod].OrgFuncMin == 0) && (module_list[idx_mod].OrgFuncMax == 0) )	{
+		if( (module_list[idx_mod].old_func_addr_min == 0) && (module_list[idx_mod].old_func_addr_max == 0) )	{
 			continue;
 		}
 		IdxBlk = find_usable_block(idx_mod);
 		if(IdxBlk >= 0)	{
-			module_list[idx_mod].IdxPatchBlk = IdxBlk;
+			module_list[idx_mod].idx_patch_blk = IdxBlk;
 		}
 		else	{	// does not exist
-			pCheck = ( (uint64_t)(module_list[idx_mod].OrgFuncMin) + (uint64_t)(module_list[idx_mod].OrgFuncMax) )/2;
+			pCheck = ( (uint64_t)(module_list[idx_mod].old_func_addr_min) + (uint64_t)(module_list[idx_mod].old_func_addr_max) )/2;
 			
 			iSeg = -1;
 			for(i=0; i<num_seg; i++)	{
@@ -630,31 +630,31 @@ int install_hook(void)
 	allocate_memory_block_for_patches();	
 	
 	for(idx_mod=0; idx_mod<num_module; idx_mod++)	{
-		pTrampoline = (TRAMPOLINE *)(patch_blk_list[module_list[idx_mod].IdxPatchBlk].patch_addr);
-		nFunc_InBlk = patch_blk_list[module_list[idx_mod].IdxPatchBlk].num_trampoline;
+		pTrampoline = (TRAMPOLINE *)(patch_blk_list[module_list[idx_mod].idx_patch_blk].patch_addr);
+		nFunc_InBlk = patch_blk_list[module_list[idx_mod].idx_patch_blk].num_trampoline;
 		
-		for(iFunc=0; iFunc<module_list[idx_mod].nFunc; iFunc++)	{
-			if(module_list[idx_mod].PatchDisabled[iFunc])	{
+		for(iFunc=0; iFunc<module_list[idx_mod].num_hook; iFunc++)	{
+			if(module_list[idx_mod].is_patch_disabled[iFunc])	{
 				continue;
 			}
 			for(iFunc2=0; iFunc2<iFunc; iFunc2++)	{
-				if(module_list[idx_mod].PatchDisabled[iFunc2] == 0)	{	// a valid patch
-					if(module_list[idx_mod].OrgFunc[iFunc] == module_list[idx_mod].OrgFunc[iFunc2])	{
-						module_list[idx_mod].PatchDisabled[iFunc] = 1;
-						module_list[idx_mod].OrgFunc[iFunc] = 0;	// disable duplicated patch
+				if(module_list[idx_mod].is_patch_disabled[iFunc2] == 0)	{	// a valid patch
+					if(module_list[idx_mod].old_func_addr_list[iFunc] == module_list[idx_mod].old_func_addr_list[iFunc2])	{
+						module_list[idx_mod].is_patch_disabled[iFunc] = 1;
+						module_list[idx_mod].old_func_addr_list[iFunc] = 0;	// disable duplicated patch
 						break;
 					}
 				}
 			}
-			if(module_list[idx_mod].PatchDisabled[iFunc])	{	// recheck
+			if(module_list[idx_mod].is_patch_disabled[iFunc])	{	// recheck
 				continue;
 			}
 			
 			WithJmp[nFunc_InBlk]=-1;
 			
-			pTrampoline[nFunc_InBlk].addr_org_func = (void *)(module_list[idx_mod].OrgFunc[iFunc]);
-			pTrampoline[nFunc_InBlk].Offset_RIP_Var = NULL_RIP_VAR_OFFSET;
-			pTrampoline[nFunc_InBlk].nBytesCopied = 0;
+			pTrampoline[nFunc_InBlk].addr_org_func = (void *)(module_list[idx_mod].old_func_addr_list[iFunc]);
+			pTrampoline[nFunc_InBlk].offset_rIP_var = NULL_RIP_VAR_OFFSET;
+			pTrampoline[nFunc_InBlk].saved_code_len = 0;
 			
 			ud_obj.pc = 0;
 			ud_set_input_hook(&ud_obj, input_hook_x);
@@ -666,7 +666,7 @@ int install_hook(void)
 			while (ud_disassemble(&ud_obj)) {
 				OffsetList[nInstruction] = ud_insn_off(&ud_obj);
 				if(OffsetList[nInstruction] >= JMP_INSTRCTION_LEN)	{	// size of jmp instruction
-					pTrampoline[nFunc_InBlk].nBytesCopied = OffsetList[nInstruction];
+					pTrampoline[nFunc_InBlk].saved_code_len = OffsetList[nInstruction];
 					if( (nInstruction > 0) && (strncmp(szHexCode[nInstruction-1], "e9", 2)==0) )	{
 						if(strlen(szHexCode[nInstruction-1]) == 10)	{	// found a jmp instruction here!!!
 							if(nInstruction >= 2)	{
@@ -683,7 +683,7 @@ int install_hook(void)
 				if(pSubStr)	{
 					ReadItem = sscanf(pSubStr+5, "%x]", &RIP_Offset);
 					if(ReadItem == 1)	{
-						pTrampoline[nFunc_InBlk].Offset_RIP_Var = RIP_Offset;
+						pTrampoline[nFunc_InBlk].offset_rIP_var = RIP_Offset;
 					}
 				}
 				nInstruction++;
@@ -694,19 +694,19 @@ int install_hook(void)
 			}			
 			
 			memcpy(pTrampoline[nFunc_InBlk].bounce, instruction_bounce, BOUNCE_CODE_LEN);
-			*((unsigned long int *)(pTrampoline[nFunc_InBlk].bounce + OFFSET_NEW_FUNC_ADDR)) = (unsigned long int)(module_list[idx_mod].NewFunc[iFunc]);	// the address of new function
+			*((unsigned long int *)(pTrampoline[nFunc_InBlk].bounce + OFFSET_NEW_FUNC_ADDR)) = (unsigned long int)(module_list[idx_mod].new_func_addr_list[iFunc]);	// the address of new function
 			
 			
-			memcpy(pTrampoline[nFunc_InBlk].trampoline, pTrampoline[nFunc_InBlk].addr_org_func, pTrampoline[nFunc_InBlk].nBytesCopied);
-			pTrampoline[nFunc_InBlk].trampoline[pTrampoline[nFunc_InBlk].nBytesCopied] = 0xE9;	// jmp
+			memcpy(pTrampoline[nFunc_InBlk].trampoline, pTrampoline[nFunc_InBlk].addr_org_func, pTrampoline[nFunc_InBlk].saved_code_len);
+			pTrampoline[nFunc_InBlk].trampoline[pTrampoline[nFunc_InBlk].saved_code_len] = 0xE9;	// jmp
 			Jmp_Offset = (int) ( ( (long int)(pTrampoline[nFunc_InBlk].addr_org_func) - ( (long int)(pTrampoline[nFunc_InBlk].trampoline) + 5) )  & 0xFFFFFFFF);
-			*((int*)(pTrampoline[nFunc_InBlk].trampoline + pTrampoline[nFunc_InBlk].nBytesCopied + 1)) = Jmp_Offset;
+			*((int*)(pTrampoline[nFunc_InBlk].trampoline + pTrampoline[nFunc_InBlk].saved_code_len + 1)) = Jmp_Offset;
 			
-			if(pTrampoline[nFunc_InBlk].Offset_RIP_Var != NULL_RIP_VAR_OFFSET)	{
-				jMax = pTrampoline[nFunc_InBlk].nBytesCopied - 4;
+			if(pTrampoline[nFunc_InBlk].offset_rIP_var != NULL_RIP_VAR_OFFSET)	{
+				jMax = pTrampoline[nFunc_InBlk].saved_code_len - 4;
 				for(j=jMax-2; j<=jMax; j++)	{
 					p_int = (int *)(pTrampoline[nFunc_InBlk].trampoline + j);
-					if( *p_int == pTrampoline[nFunc_InBlk].Offset_RIP_Var )	{
+					if( *p_int == pTrampoline[nFunc_InBlk].offset_rIP_var )	{
 						*p_int += ( (int)( ( (long int)(pTrampoline[nFunc_InBlk].addr_org_func) - (long int)(pTrampoline[nFunc_InBlk].trampoline) )  ) );	// correct relative offset of PIC var
 					}
 				}
@@ -721,14 +721,14 @@ int install_hook(void)
 			}
 			
 			// set up function pointers for original functions
-			*(module_list[idx_mod].PtrCallOrg[iFunc]) = (long int)(pTrampoline[nFunc_InBlk].trampoline);	// the entry address to call orginal function
+			*(module_list[idx_mod].ptr_old_func_add_list[iFunc]) = (long int)(pTrampoline[nFunc_InBlk].trampoline);	// the entry address to call orginal function
 			
 			
 			pbaseOrg = (void *)( (long int)(pTrampoline[nFunc_InBlk].addr_org_func) & mask );	// fast mod
 			
 			MemSize_Modify = determine_mem_block_size((void *)(pTrampoline[nFunc_InBlk].addr_org_func), page_size);
 			if(mprotect(pbaseOrg, MemSize_Modify, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)	{
-				printf("Error in executing mprotect(). %s\n", module_list[idx_mod].szOrgFuncName[iFunc]);
+				printf("Error in executing mprotect(). %s\n", module_list[idx_mod].func_name_list[iFunc]);
 				exit(1);
 			}
 			
@@ -739,14 +739,14 @@ int install_hook(void)
 			*((int *)(pOpOrgEntry+1)) = (int)( (long int)(pTrampoline[nFunc_InBlk].bounce) - (long int)(pTrampoline[nFunc_InBlk].addr_org_func) - 5 );
 			
 			if(mprotect(pbaseOrg, MemSize_Modify, PROT_READ | PROT_EXEC) != 0)	{
-				printf("Error in executing mprotect(). %s\n", module_list[idx_mod].szOrgFuncName[iFunc]);
+				printf("Error in executing mprotect(). %s\n", module_list[idx_mod].func_name_list[iFunc]);
 				exit(1);
 			}
 			
 			nFunc_InBlk++;
 			num_hook_installed++;
 		}
-		patch_blk_list[module_list[idx_mod].IdxPatchBlk].num_trampoline += module_list[idx_mod].nFunc;
+		patch_blk_list[module_list[idx_mod].idx_patch_blk].num_trampoline += module_list[idx_mod].num_hook;
 	}
 	
 	return num_hook_installed;
@@ -846,23 +846,23 @@ int register_a_hook(const char *module_name, const char *func_name, const void *
 	
 	idx_mod = query_registered_module(module_name_local);
 	if(idx_mod == -1)	{	// not registered module name. Register it.
-		strcpy(module_list[num_module].szModuleName, module_name_local);
-		module_list[num_module].Module_base_addr = lib_base_addr[idx];
-		strcpy(module_list[num_module].szOrgFuncName[module_list[num_module].nFunc], func_name);
-		module_list[num_module].NewFunc[module_list[num_module].nFunc] = (void*)new_func_addr;
-		module_list[num_module].PtrCallOrg[module_list[num_module].nFunc] = (long int *)ptr_org_func;
-		module_list[num_module].nFunc = 1;
+		strcpy(module_list[num_module].module_name, module_name_local);
+		module_list[num_module].module_base_addr = lib_base_addr[idx];
+		strcpy(module_list[num_module].func_name_list[module_list[num_module].num_hook], func_name);
+		module_list[num_module].new_func_addr_list[module_list[num_module].num_hook] = (void*)new_func_addr;
+		module_list[num_module].ptr_old_func_add_list[module_list[num_module].num_hook] = (long int *)ptr_org_func;
+		module_list[num_module].num_hook = 1;
 		num_module++;
 	}
 	else	{		
-		if(module_list[idx_mod].Module_base_addr != lib_base_addr[idx])	{
-			printf("WARING> module_list[idx_mod].Module_base_addr != lib_base_addr[idx]\n");
+		if(module_list[idx_mod].module_base_addr != lib_base_addr[idx])	{
+			printf("WARING> module_list[idx_mod].module_base_addr != lib_base_addr[idx]\n");
 		}
 		
-		strcpy(module_list[idx_mod].szOrgFuncName[module_list[idx_mod].nFunc], func_name);
-		module_list[idx_mod].NewFunc[module_list[idx_mod].nFunc] = (void *)new_func_addr;
-		module_list[idx_mod].PtrCallOrg[module_list[idx_mod].nFunc] = (long int *)ptr_org_func;
-		module_list[idx_mod].nFunc ++;
+		strcpy(module_list[idx_mod].func_name_list[module_list[idx_mod].num_hook], func_name);
+		module_list[idx_mod].new_func_addr_list[module_list[idx_mod].num_hook] = (void *)new_func_addr;
+		module_list[idx_mod].ptr_old_func_add_list[module_list[idx_mod].num_hook] = (long int *)ptr_org_func;
+		module_list[idx_mod].num_hook ++;
 	}
 	
 	num_hook++;
@@ -887,45 +887,45 @@ static void query_all_org_func_addr(void)
 	get_module_maps();	// update module map
 	
 	for(idx_mod=0; idx_mod<num_module; idx_mod++)	{	// update module base address
-		idx = query_lib_name_in_list(module_list[idx_mod].szModuleName);
+		idx = query_lib_name_in_list(module_list[idx_mod].module_name);
 		
 		if(idx == -1)	{	// a new name not in list
-			printf("Fail to find library %s in maps.\nQuit\n", module_list[idx_mod].szModuleName);
+			printf("Fail to find library %s in maps.\nQuit\n", module_list[idx_mod].module_name);
 			exit(1);
 		}
 		else	{
-			strcpy(module_list[idx_mod].szModuleName, lib_name_list[idx]);
-			module_list[idx_mod].Module_base_addr = lib_base_addr[idx];
+			strcpy(module_list[idx_mod].module_name, lib_name_list[idx]);
+			module_list[idx_mod].module_base_addr = lib_base_addr[idx];
 		}
 	}
 	
 	for(idx_mod=0; idx_mod<num_module; idx_mod++)	{
-		query_func_addr(module_list[idx_mod].szModuleName, module_list[idx_mod].szOrgFuncName, \
-			module_list[idx_mod].OrgFunc, module_list[idx_mod].Func_Len, \
-			module_list[idx_mod].Module_base_addr, module_list[idx_mod].nFunc);
+		query_func_addr(module_list[idx_mod].module_name, module_list[idx_mod].func_name_list, \
+			module_list[idx_mod].old_func_addr_list, module_list[idx_mod].old_func_len_list, \
+			module_list[idx_mod].module_base_addr, module_list[idx_mod].num_hook);
 		
-		for(iFunc=0; iFunc<module_list[idx_mod].nFunc; iFunc++)	{
-			if(module_list[idx_mod].OrgFunc[iFunc])	{
-				module_list[idx_mod].OrgFuncMin = module_list[idx_mod].OrgFunc[iFunc];
-				module_list[idx_mod].OrgFuncMax = module_list[idx_mod].OrgFunc[iFunc];
+		for(iFunc=0; iFunc<module_list[idx_mod].num_hook; iFunc++)	{
+			if(module_list[idx_mod].old_func_addr_list[iFunc])	{
+				module_list[idx_mod].old_func_addr_min = module_list[idx_mod].old_func_addr_list[iFunc];
+				module_list[idx_mod].old_func_addr_max = module_list[idx_mod].old_func_addr_list[iFunc];
 				break;
 			}
 		}
 		
-		for(iFunc=0; iFunc<module_list[idx_mod].nFunc; iFunc++)	{
-			if( module_list[idx_mod].OrgFunc[iFunc] == 0 )	{
-				//printf("Fail to find the entry address for function %s in %s\nQuit\n", module_list[idx_mod].szOrgFuncName[iFunc], module_list[idx_mod].szModuleName);
+		for(iFunc=0; iFunc<module_list[idx_mod].num_hook; iFunc++)	{
+			if( module_list[idx_mod].old_func_addr_list[iFunc] == 0 )	{
+				//printf("Fail to find the entry address for function %s in %s\nQuit\n", module_list[idx_mod].func_name_list[iFunc], module_list[idx_mod].module_name);
 				//exit(1);
-				module_list[idx_mod].PatchDisabled[iFunc] = 1;
+				module_list[idx_mod].is_patch_disabled[iFunc] = 1;
 				continue;
 			}
-			if(module_list[idx_mod].OrgFuncMin > module_list[idx_mod].OrgFunc[iFunc])	{
-				module_list[idx_mod].OrgFuncMin = module_list[idx_mod].OrgFunc[iFunc];
+			if(module_list[idx_mod].old_func_addr_min > module_list[idx_mod].old_func_addr_list[iFunc])	{
+				module_list[idx_mod].old_func_addr_min = module_list[idx_mod].old_func_addr_list[iFunc];
 			}
-			if(module_list[idx_mod].OrgFuncMax < module_list[idx_mod].OrgFunc[iFunc])	{
-				module_list[idx_mod].OrgFuncMax = module_list[idx_mod].OrgFunc[iFunc];
+			if(module_list[idx_mod].old_func_addr_max < module_list[idx_mod].old_func_addr_list[iFunc])	{
+				module_list[idx_mod].old_func_addr_max = module_list[idx_mod].old_func_addr_list[iFunc];
 			}
 		}
-		//printf("module_list[%d], %d functions,  %s, 0x%p, 0x%p\n", idx_mod, module_list[idx_mod].nFunc, module_list[idx_mod].szModuleName, module_list[idx_mod].OrgFuncMin, module_list[idx_mod].OrgFuncMax);
+		//printf("module_list[%d], %d functions,  %s, 0x%p, 0x%p\n", idx_mod, module_list[idx_mod].num_hook, module_list[idx_mod].module_name, module_list[idx_mod].OrgFuncMin, module_list[idx_mod].OrgFuncMax);
 	}
 }
