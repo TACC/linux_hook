@@ -603,13 +603,13 @@ static size_t determine_mem_block_size(const void *addr, const unsigned long int
 /*
  * install_hook - Install hooks by setting up trampolines for all functions registered.
  * Returns:
- *   void
+ *   The number of hooks actually installed. 
  */
 
-void install_hook(void)
+int install_hook(void)
 {
 	int j, idx_mod, iFunc, iFunc2, jMax, ReadItem, *p_int, WithJmp[MAX_PATCH];
-	int nInstruction, RIP_Offset, Jmp_Offset, nFunc_InBlk;
+	int nInstruction, RIP_Offset, Jmp_Offset, nFunc_InBlk, num_hook_installed=0;
 	int OffsetList[MAX_INSTUMENTS];
 	char szHexCode[MAX_INSTUMENTS][64], szInstruction[MAX_INSTUMENTS][128];
 	char *pSubStr=NULL, *pOpOrgEntry;
@@ -618,8 +618,10 @@ void install_hook(void)
 	TRAMPOLINE *pTrampoline;
 	unsigned long int page_size, mask;
 	
-    if(found_libc==0) return;
-	
+    if(found_libc==0)	{
+		return 0;
+	}
+
 	page_size = sysconf(_SC_PAGESIZE);
 	mask = ~(page_size - 1);
 	
@@ -741,10 +743,12 @@ void install_hook(void)
 			}
 			
 			nFunc_InBlk++;
+			num_hook_installed++;
 		}
 		patch_blk_list[module_list[idx_mod].IdxPatchBlk].num_trampoline += module_list[idx_mod].nFunc;
 	}
 	
+	return num_hook_installed;
 }
 #undef MAX_INSTUMENTS
 
@@ -775,13 +779,21 @@ static int input_hook_x(ud_t* u)
  *   @new_func_addr: The address of our new implementation. 
  *   @ptr_org_func: *ptr_org_func will hold the address of orginal function implemented in lib module_name. 
  * Returns:
- *   void
+ *   0: success; otherwise fail. 
  */
-void register_a_hook(const char *module_name, const char *func_name, const void *new_func_addr, const long int *ptr_org_func)
+int register_a_hook(const char *module_name, const char *func_name, const void *new_func_addr, const long int *ptr_org_func)
 {
 	void *module;
 	int idx, idx_mod;
-	char module_name_local[512];
+	char module_name_local[MAX_LEN_PATH_NAME];
+
+	// make sure module_name[] and func_name[] are not too long. 
+	if(strlen(module_name) >= MAX_LEN_PATH_NAME)	{
+		return REGISTER_MODULE_NAME_TOO_LONG;
+	}
+	if(strlen(func_name) >= MAX_LEN_FUNC_NAME)	{
+		return REGISTER_FUNC_NAME_TOO_LONG;
+	}
 
 	// Do some initialization work at the first time. 
 	if( !num_hook )	{
@@ -792,8 +804,10 @@ void register_a_hook(const char *module_name, const char *func_name, const void 
 		determine_lib_path();
 	}
 	
-	if(found_libc==0) return;
-	
+	if(found_libc==0)	{
+		return REGISTER_NOT_FOUND_LIBC;
+	}
+
 	if(num_called_ModuleMap == 0)	{
 		get_module_maps();
 		num_called_ModuleMap++;
@@ -816,8 +830,8 @@ void register_a_hook(const char *module_name, const char *func_name, const void 
 		if( query_lib_name_in_list(module_name_local) == -1 )	{	// not loaded yet
 			module = dlopen(module_name_local, RTLD_LAZY);	// load the library
 			if(module == NULL)	{
-				printf("Fail to dlopen: %s.\n", module_name_local);
-				return;
+				printf("Error> Fail to dlopen: %s.\n", module_name_local);
+				return REGISTER_DLOPEN_FAILED;
 			}
 			get_module_maps();
 		}
@@ -841,7 +855,7 @@ void register_a_hook(const char *module_name, const char *func_name, const void 
 	}
 	else	{		
 		if(module_list[idx_mod].Module_base_addr != lib_base_addr[idx])	{
-			printf("WARING: module_list[idx_mod].Module_base_addr != lib_base_addr[idx]\n");
+			printf("WARING> module_list[idx_mod].Module_base_addr != lib_base_addr[idx]\n");
 		}
 		
 		strcpy(module_list[idx_mod].szOrgFuncName[module_list[idx_mod].nFunc], func_name);
@@ -853,9 +867,11 @@ void register_a_hook(const char *module_name, const char *func_name, const void 
 	num_hook++;
 	
 	if(num_hook > MAX_PATCH)	{
-		printf("num_hook > MAX_PATCH\nQuit\n");
-		exit(1);
+		printf("Error> num_hook > MAX_PATCH\nQuit\n");
+		return REGISTER_TOO_MANY_HOOKS;
 	}
+
+	return REGISTER_SUCCESS;
 }
 
 /*
