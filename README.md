@@ -46,7 +46,7 @@ Example of a mini code to use hook_linux to intercept the open() in libc.so.
 typedef int (*org_open_libc)(const char *pathname, int oflags, ...);
 org_open_libc real_open_libc=NULL;
 
-// New open() that intercept the open() in libc.so
+// When the open() in libc.so is called, new_open_libc() will be executed.
 int new_open_libc(const char *pathname, int oflags, ...)
 {
         int mode = 0, two_args=1, ret;

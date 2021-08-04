@@ -32,7 +32,7 @@ org_open_libc real_open_libc=NULL;
 typedef int (*org_open_pthread)(const char *pathname, int oflags, ...);
 org_open_pthread real_open_pthread=NULL;
 
-// New open() that intercept the open() in ld.so
+// When the open() in ld.so is called, new_open_ld() will be executed. 
 int new_open_ld(const char *pathname, int oflags, ...)
 {
 	int mode = 0, two_args=1, ret;
@@ -59,7 +59,7 @@ int new_open_ld(const char *pathname, int oflags, ...)
 	return ret;
 }
 
-// New open() that intercept the open() in libc.so
+// When the open() in libc.so is called, new_open_libc() will be executed.
 int new_open_libc(const char *pathname, int oflags, ...)
 {
 	int mode = 0, two_args=1, ret;
@@ -85,7 +85,7 @@ int new_open_libc(const char *pathname, int oflags, ...)
 	return ret;
 }
 
-// New open() that intercept the open() in libpthread.so
+// When the open() in libpthread.so is called, new_open_pthread() will be executed.
 int new_open_pthread(const char *pathname, int oflags, ...)
 {
 	int mode = 0, two_args=1, ret;
