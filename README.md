@@ -1,9 +1,16 @@
 # linux_hook
-linux_hook is a mini framework to hook the functions in shared libraries under Linux.
-It only works on x86_64 at this time. I might extend it to support Power PC and
-ARM in future. 
+linux_hook is a mini framework to hook / intercept the functions in shared libraries 
+under Linux.It only works on x86_64 at this time. I might extend it to support Power 
+PC and ARM in future. 
 <br>
 [udis86](https://github.com/vmt/udis86) was adopted to disasseble binary code on x86_64. 
+
+<br>
+Trampoline technique is adopted in the implementation of linux_hook, so the smallest 
+size functions we can hook needs 5 bytes. A jmp (+/-2GB) instruction with 5 bytes will 
+be placed at the entry of the function we intend to hook. Memory blocks close to the 
+shared libraries are allocated dynamically to provide the space for setting up trampoline (
+the code to jump to new function and the code to call old function). 
 
 Get started,<br> 
 `git clone https://github.com/TACC/linux_hook` <br>
@@ -25,8 +32,9 @@ One more test to monitor open() in run a simple hello world in python.
 `LD_PRELOAD=./hook_open.so python3 ./test/hello.py > 1 ; wc -l 1` <br>
 `LD_PRELOAD=./mini_open.so python3 ./test/hello.py > 2 ; wc -l 2` <br>
 
-You should see file 1 and 2 have different number of lines. We can see the hook 
-based on trampoline is more reliable. 
+mini_open.so implements the simplest LD_PRELOAD trick to intercept functions. 
+You should observe file 1 and 2 have different number of lines. We can see the 
+hook based on trampoline is more reliable. 
 
 <br>
 
