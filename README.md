@@ -1,12 +1,10 @@
 # linux_hook
 linux_hook is a mini framework to hook / intercept the functions in shared libraries 
 under Linux. It only works on x86_64 at this time. I might extend it to support Power 
-PC and ARM in future. 
+PC and ARM in future. <br>
 
-<br>
-[udis86](https://github.com/vmt/udis86) was adopted to disasseble binary code on x86_64. 
+[udis86](https://github.com/vmt/udis86) was adopted to disasseble binary code on x86_64. <br>
 
-<br>
 Trampoline technique is adopted in the implementation of linux_hook, so the smallest 
 size functions we can hook needs 5 bytes. A jmp (+/-2GB) instruction with 5 bytes will 
 be placed at the entry of the function we intend to hook. Memory blocks close to the 
@@ -19,18 +17,15 @@ Get started,<br>
 `cd linux_hook` <br>
 `make` <br>
 
-Test
-
+Test<br>
 `LD_PRELOAD=./hook_open.so touch aaa bbb ccc` <br>
 
-You should see, 
-
+You should see, <br>
 `DBG> new_open(aaa)` <br>
 `DBG> new_open(bbb)` <br>
 `DBG> new_open(ccc)` <br>
 
-One more test to monitor open() in run a simple hello world in python. 
-
+One more test to monitor open() in run a simple hello world in python. <br>
 `LD_PRELOAD=./hook_open.so python3 ./test/hello.py > 1 ; wc -l 1` <br>
 `LD_PRELOAD=./mini_open.so python3 ./test/hello.py > 2 ; wc -l 2` <br>
 
@@ -99,12 +94,10 @@ Save the code as 1.c. <br>
 `gcc -fPIC -c 1.c` <br>
 `gcc -fPIC -shared -o 1.so 1.o obj/hook.o obj/decode.o obj/itab.o obj/syn-att.o obj/syn-intel.o obj/syn.o obj/udis86.o` <br>
 
-Now test it. 
-
+Now test it. <br>
 `LD_PRELOAD=./1.so touch aaa bbb ccc` <br>
 
-You should see,
-
+You should see, <br>
 `DBG> new_open(aaa)` <br>
 `DBG> new_open(bbb)` <br>
 `DBG> new_open(ccc)` <br>
