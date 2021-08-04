@@ -13,21 +13,21 @@ enum ERROR_CODE_REGISTER_HOOK{REGISTER_SUCCESS, REGISTER_NOT_FOUND_LIBC, REGISTE
  * Returns:
  *   0: success; otherwise fail. 
  */
-extern int register_a_hook(const char *module_name, const char *func_Name, const void *new_func_addr, const long int *ptr_org_func);
+int register_a_hook(const char *module_name, const char *func_Name, const void *new_func_addr, const long int *ptr_org_func);
 
 /*
  * install_hook - Install hooks by setting up trampolines for all functions registered.
  * Returns:
  *   The number of hooks actually installed. 
  */
-extern int install_hook(void);
+int install_hook(void);
 
 /*
  * uninstall_hook - Uninstall hooks by cleaning up trampolines.
  * Returns:
  *   void
  */
-extern void uninstall_hook(void);
+void uninstall_hook(void);
 
 #endif
 

@@ -73,6 +73,7 @@ Trampoline is used in hook.
 #include <inttypes.h>
 #include <assert.h>
 
+#include "../include/hook.h"
 #include "hook_int.h"
 
 
