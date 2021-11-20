@@ -401,9 +401,9 @@ static void get_module_maps(void)
 	szBuf[FileSize] = 0;
 	
 	iPos = 0;	// start from the beginging
-	
+/*	
 	while(iPos >= 0)	{
-		ReadItem = sscanf(szBuf+iPos, "%lx-%lx", &addr_B, &addr_E);
+		ReadItem = sscanf(szBuf+iPos, "%lx%lx", &addr_B, &addr_E);
 		if(ReadItem != 2)	{
 			printf("Error in reading addresses.\n");
 		}
@@ -419,7 +419,7 @@ static void get_module_maps(void)
 			}
 		}
 	}
-	
+*/	
 	while(iPos >= 0)	{
 		ReadItem = sscanf(szBuf+iPos, "%lx-%lx", &addr_B, &addr_E);
 		if(ReadItem == 2)	{
