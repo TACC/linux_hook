@@ -135,7 +135,7 @@ static char path_libpthread[512]="";
 static void determine_lib_path(void)
 {
 	int i, pid, size_read;
-	char read_buff_map[8192], path_file_map[64], *pPos=NULL, *pStart=NULL, *pEnd=NULL, lib_ver_str[32], lib_dir_str[256];
+	char read_buff_map[32768], path_file_map[64], *pPos=NULL, *pStart=NULL, *pEnd=NULL, lib_ver_str[32], lib_dir_str[256];
 	FILE *fp;
 	
 	pid = getpid();
