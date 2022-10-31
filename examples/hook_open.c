@@ -32,11 +32,32 @@ org_open_libc real_open_libc=NULL;
 typedef int (*org_open_pthread)(const char *pathname, int oflags, ...);
 org_open_pthread real_open_pthread=NULL;
 
+int open_common(int (*org_open)(const char *pathname, int oflags, ...), const char *szCallerName, const char *pathname, int oflags, ...)
+{
+	int mode = 0, two_args=1, ret;
+	char msg[512];
+
+	if (oflags & O_CREAT)   {
+		va_list arg;
+		va_start (arg, oflags);
+		mode = va_arg (arg, int);
+		va_end (arg);
+		two_args=0;
+	}
+	snprintf(msg, sizeof(msg), "DBG> %s(%s)\n", szCallerName, pathname);
+	write(STDOUT_FILENO, msg, strlen(msg));
+
+	if(two_args)    {
+		ret = org_open(pathname, oflags);
+	} else {
+		ret = org_open(pathname, oflags, mode);
+	}
+	return ret;
+}
 // When the open() in ld.so is called, new_open_ld() will be executed. 
 int new_open_ld(const char *pathname, int oflags, ...)
 {
 	int mode = 0, two_args=1, ret;
-	char msg[512];
 
 	if (oflags & O_CREAT)	{
 		va_list arg;
@@ -45,15 +66,12 @@ int new_open_ld(const char *pathname, int oflags, ...)
 		va_end (arg);
 		two_args=0;
 	}
-
-	snprintf(msg, sizeof(msg), "DBG> new_open_ld(%s)\n", pathname);
-	write(STDOUT_FILENO, msg, strlen(msg));
 	
 	if(two_args)	{
-		ret = real_open_ld(pathname, oflags);
+		ret = open_common(real_open_ld, "new_open_ld", pathname, oflags);
 	}
 	else	{
-		ret = real_open_ld(pathname, oflags, mode);
+		ret = open_common(real_open_ld, "new_open_ld", pathname, oflags, mode);
 	}
 
 	return ret;
@@ -63,7 +81,6 @@ int new_open_ld(const char *pathname, int oflags, ...)
 int new_open_libc(const char *pathname, int oflags, ...)
 {
 	int mode = 0, two_args=1, ret;
-	char msg[512];
 
 	if (oflags & O_CREAT)	{
 		va_list arg;
@@ -73,14 +90,11 @@ int new_open_libc(const char *pathname, int oflags, ...)
 		two_args=0;
 	}
 
-	snprintf(msg, sizeof(msg), "DBG> new_open_libc(%s)\n", pathname);
-	write(STDOUT_FILENO, msg, strlen(msg));
-
 	if(two_args)	{
-		ret = real_open_libc(pathname, oflags);
+		ret = open_common(real_open_libc, "new_open_libc", pathname, oflags);
 	}
 	else	{
-		ret = real_open_libc(pathname, oflags, mode);
+		ret = open_common(real_open_libc, "new_open_libc", pathname, oflags, mode);
 	}
 	return ret;
 }
@@ -89,7 +103,6 @@ int new_open_libc(const char *pathname, int oflags, ...)
 int new_open_pthread(const char *pathname, int oflags, ...)
 {
 	int mode = 0, two_args=1, ret;
-	char msg[512];
 
 	if (oflags & O_CREAT)	{
 		va_list arg;
@@ -99,14 +112,11 @@ int new_open_pthread(const char *pathname, int oflags, ...)
 		two_args=0;
 	}
 
-	snprintf(msg, sizeof(msg), "DBG> new_open_pthread(%s)\n", pathname);
-	write(STDOUT_FILENO, msg, strlen(msg));
-
 	if(two_args)	{
-		ret = real_open_pthread(pathname, oflags);
+		ret = open_common(real_open_pthread, "new_open_pthread", pathname, oflags);
 	}
 	else	{
-		ret = real_open_pthread(pathname, oflags, mode);
+		ret = open_common(real_open_pthread, "new_open_pthread", pathname, oflags, mode);
 	}
 	return ret;
 }
