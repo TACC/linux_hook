@@ -21,16 +21,12 @@ You may encounter various versions. We intercept all of them in this example.
 */
 
 // define the interface of the function we want to intercept
-typedef int (*org_open_ld)(const char *pathname, int oflags, ...);
+typedef int (*org_open)(const char *pathname, int oflags, ...);
 
 // define the function pointer that will hold the address of orginal function. 
-org_open_ld real_open_ld=NULL;
-
-typedef int (*org_open_libc)(const char *pathname, int oflags, ...);
-org_open_libc real_open_libc=NULL;
-
-typedef int (*org_open_pthread)(const char *pathname, int oflags, ...);
-org_open_pthread real_open_pthread=NULL;
+org_open real_open_ld=NULL;
+org_open real_open_libc=NULL;
+org_open real_open_pthread=NULL;
 
 int open_common(int (*org_open)(const char *pathname, int oflags, ...), const char *szCallerName, const char *pathname, int oflags, ...)
 {
