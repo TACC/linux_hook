@@ -10,7 +10,7 @@ ifeq ($(SHELL),sh.exe)
     RM := del /f/q
 endif
 
-all: hook_open.so mini_open.so
+all: hook_open.so hook_test.so mini_open.so
 
 mini_open.so: mini_open.o
 	$(CC) $(LFLAGS) -o mini_open.so obj/mini_open.o
@@ -23,6 +23,12 @@ hook_open.so: hook_open.o hook.o decode.o itab.o syn-att.o syn-intel.o syn.o udi
 
 hook_open.o: examples/hook_open.c $(HEADERS)
 	$(CC) $(CFLAGS) -c -o obj/hook_open.o $<
+
+hook_test.so: hook_test.o hook.o decode.o itab.o syn-att.o syn-intel.o syn.o udis86.o
+	$(CC) $(LFLAGS) -o hook_test.so obj/hook_test.o obj/hook.o obj/decode.o obj/itab.o obj/syn-att.o obj/syn-intel.o obj/syn.o obj/udis86.o
+
+hook_test.o: examples/hook_test.c $(HEADERS)
+	$(CC) $(CFLAGS) -c -o obj/hook_test.o $<
 
 hook.o: src/hook.c $(HEADERS)
 	$(CC) $(CFLAGS) -c -o obj/hook.o $<
@@ -47,6 +53,6 @@ udis86.o: libudis86/udis86.c $(HEADERS)
 
 
 clean:
-	$(RM) obj/*.o mini_open.so hook_open.so
+	$(RM) obj/*.o mini_open.so hook_open.so hook_test.so
 
 $(shell   mkdir -p obj)
